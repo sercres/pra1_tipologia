@@ -1,11 +1,14 @@
 import scrapy
 import time
 import csv
+from text_utils import TextUtils
+
 
 # Es crea la classe SteamSpider per a scrapejar fent servir scrapy
 class SteamSpider(scrapy.Spider):
     name = 'steam'
     start_urls = ['https://store.steampowered.com/search/?sort_by=_ASC&category1=998&page=1']
+    textUtils = TextUtils()
 
 # Es defineix l'user agent per a camuflar que s'està scrapejant
 # Revisar si l'user agent és vàlid o no 
@@ -24,18 +27,37 @@ class SteamSpider(scrapy.Spider):
         for game in response.css('.search_result_row'):
             title = game.css('.title::text').get().strip()
             price = game.css('.search_price::text').get().strip()
-            review = game.css('.search_review_summary::text').get().strip()
+            review_data = game.css('.search_review_summary').attrib['data-tooltip-html'].strip()
             released = game.css('.search_released::text').get().strip()
-            discount = game.css('.search_discount::text').get()
-            if discount:
-                discount = discount.strip()
+            discount = game.css('.search_discount span::text').get()
+            platforms = len(game.css('.platform_img').getall()) #nombre de plataformes disponibles
+
+            '''
+            discounted = game.css('.search_price discounted::text').extract()
+
+            if len(discounted) > 0:
+                discounted = discounted[0].strip()
+            '''
+
+
+            if review_data:
+                nums = self.textUtils.get_numbers_from_string(review_data)
+                review_score = nums[0]
+                n_reviews = nums[1]
+            else:
+                review_score = ''
+                n_reviews = ''
+
 
             item = {
                 'title': title,
                 'price': price,
                 'discount': discount,
-                'review': review,
-                'released': released
+                'review_score': review_score,
+                'number_reviews': n_reviews,
+                'released': released,
+                'platforms': platforms,
+                'discounted': discounted
             }
             yield item
             self.write_to_csv(item)
@@ -54,7 +76,7 @@ class SteamSpider(scrapy.Spider):
     def write_to_csv(self, item):
         filename = 'steam_games.csv'
         with open(filename, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['title', 'price', 'discount', 'review', 'released'])
+            writer = csv.DictWriter(f, fieldnames=['title', 'price', 'discount', 'review_score', 'number_reviews', 'released', 'platforms', 'discounted'])
             if f.tell() == 0:
                 writer.writeheader()
             writer.writerow(item)
