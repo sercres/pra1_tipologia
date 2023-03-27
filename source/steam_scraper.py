@@ -56,8 +56,7 @@ class SteamSpider(scrapy.Spider):
                 'review_score': review_score,
                 'number_reviews': n_reviews,
                 'released': released,
-                'platforms': platforms,
-                'discounted': discounted
+                'platforms': platforms
             }
             yield item
             self.write_to_csv(item)
