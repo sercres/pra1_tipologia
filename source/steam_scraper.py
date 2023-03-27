@@ -11,7 +11,6 @@ class SteamSpider(scrapy.Spider):
     textUtils = TextUtils()
 
 # Es defineix l'user agent per a camuflar que s'està scrapejant
-# Revisar si l'user agent és vàlid o no 
     def __init__(self):
         self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
 
@@ -47,6 +46,11 @@ class SteamSpider(scrapy.Spider):
             else:
                 review_score = ''
                 n_reviews = ''
+
+            if price:
+                price = price
+            else: 
+                price = game.css('.search_price_discount_combined').attrib['data-price-final'].strip()
 
 
             item = {
