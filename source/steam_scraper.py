@@ -31,14 +31,6 @@ class SteamSpider(scrapy.Spider):
             discount = game.css('.search_discount span::text').get()
             platforms = len(game.css('.platform_img').getall()) #nombre de plataformes disponibles
 
-            '''
-            discounted = game.css('.search_price discounted::text').extract()
-
-            if len(discounted) > 0:
-                discounted = discounted[0].strip()
-            '''
-
-
             if review_data:
                 nums = self.textUtils.get_numbers_from_string(review_data)
                 review_score = nums[0]
@@ -47,10 +39,9 @@ class SteamSpider(scrapy.Spider):
                 review_score = ''
                 n_reviews = ''
 
-            if price:
-                price = price
-            else: 
-                price = game.css('.search_price_discount_combined').attrib['data-price-final'].strip()
+            if price is None or len(price) == 0:
+                price = game.css('.search_price.discounted::text').extract()
+                price = self.textUtils.filter_number_from_array(price, '[0-9]{1,2},[0-9]{1,2}', first=True)
 
 
             item = {
@@ -79,7 +70,7 @@ class SteamSpider(scrapy.Spider):
     def write_to_csv(self, item):
         filename = 'steam_games.csv'
         with open(filename, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['title', 'price', 'discount', 'review_score', 'number_reviews', 'released', 'platforms', 'discounted'])
+            writer = csv.DictWriter(f, fieldnames=['title', 'price', 'discount', 'review_score', 'number_reviews', 'released', 'platforms'])
             if f.tell() == 0:
                 writer.writeheader()
             writer.writerow(item)
