@@ -24,6 +24,7 @@ class SteamSpider(scrapy.Spider):
 # Es parsegen cadascun dels elements de la pàgina
     def parse(self, response):
         for game in response.css('.search_result_row'):
+            game_id = game.css('a::attr(data-ds-appid)').get()
             title = game.css('.title::text').get().strip()
             price = game.css('.search_price::text').get().strip()
             review_data = game.css('.search_review_summary').attrib['data-tooltip-html'].strip()
@@ -45,6 +46,7 @@ class SteamSpider(scrapy.Spider):
 
 
             item = {
+                'game_id': game_id,
                 'title': title,
                 'price': price,
                 'discount': discount,
@@ -70,7 +72,7 @@ class SteamSpider(scrapy.Spider):
     def write_to_csv(self, item):
         filename = 'steam_games.csv'
         with open(filename, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['title', 'price', 'discount', 'review_score', 'number_reviews', 'released', 'platforms'])
+            writer = csv.DictWriter(f, fieldnames=['game_id', 'title', 'price', 'discount', 'review_score', 'number_reviews', 'released', 'platforms'])
             if f.tell() == 0:
                 writer.writeheader()
             writer.writerow(item)
