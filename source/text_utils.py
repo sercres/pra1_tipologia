@@ -4,7 +4,10 @@ class TextUtils:
     def get_numbers_from_string(self, text):
         separated_elements = re.search('[0-9]+(,[0-9]+)+', text)
         numbers = re.search('\\d+(?:\\.\\d+)?%', text)
-        return [numbers.group(0), separated_elements.group(0)]
+        if separated_elements is not None and numbers is not None:
+            return [numbers.group(0), separated_elements.group(0)]
+        else:
+            return['','']
 
     '''
     Donada una llista de nombres i un patró regex, obtenim els elements coincidents
