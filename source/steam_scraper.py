@@ -7,7 +7,7 @@ from text_utils import TextUtils
 # Es crea la classe SteamSpider per a scrapejar fent servir scrapy
 class SteamSpider(scrapy.Spider):
     name = 'steam'
-    start_urls = ['https://store.steampowered.com/search/?sort_by=_ASC&category1=998&page=1']
+    start_urls = ['https://store.steampowered.com/search/?sort_by=&sort_order=0&category1=998&supportedlang=spanish&page=1']
     textUtils = TextUtils()
 
 # Es defineix l'user agent per a camuflar que s'està scrapejant
@@ -59,9 +59,6 @@ class SteamSpider(scrapy.Spider):
             }
             yield item
             self.write_to_csv(item)
-
-# S'esperen 5 segons entre peticions de diferents pàgines
-        time.sleep(5) # Wait for 5 seconds between requests
 
 # Es passa a la següent pagina
         next_page = response.css('.search_pagination_right a::attr(href)').get()
