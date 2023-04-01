@@ -30,7 +30,7 @@ class SteamSpider(scrapy.Spider):
             review_data = game.css('.search_review_summary').attrib['data-tooltip-html'].strip()
             released = game.css('.search_released::text').get().strip()
             discount = game.css('.search_discount span::text').get()
-            platforms = len(game.css('.platform_img').getall()) #nombre de plataformes disponibles
+            platforms = game.css('span.platform_img::attr(class)').extract()
 
             if review_data:
                 nums = self.textUtils.get_numbers_from_string(review_data)
@@ -44,6 +44,8 @@ class SteamSpider(scrapy.Spider):
                 price = game.css('.search_price.discounted::text').extract()
                 price = self.textUtils.filter_number_from_array(price, '[0-9]{1,2},[0-9]{1,2}', first=True)
 
+            if platforms:
+                platforms = self.textUtils.remove_img_text(platforms)
 
             item = {
                 'game_id': game_id,

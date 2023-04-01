@@ -15,3 +15,9 @@ class TextUtils:
         if len(l) > 0 and first:
             return l[0].strip()
         return l
+
+    def remove_img_text(self, text):
+        clean_text = []
+        for t in text:
+            clean_text.append(t.replace("platform_img ", ""))
+        return(clean_text)
