@@ -1,5 +1,5 @@
 import re
-
+import locale
 class TextUtils:
     def get_numbers_from_string(self, text):
         separated_elements = re.search('[0-9]+(,[0-9]+)+', text)
@@ -24,3 +24,7 @@ class TextUtils:
         for t in text:
             clean_text.append(t.replace("platform_img ", ""))
         return(clean_text)
+
+
+    def parse_to_number(self, number):
+        return locale.atof(number)

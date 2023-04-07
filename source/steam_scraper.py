@@ -1,18 +1,25 @@
 import scrapy
 import time
 import csv
+
+from model.item import ItemSteam
 from text_utils import TextUtils
+from selenium import webdriver
+
+
 
 
 # Es crea la classe SteamSpider per a scrapejar fent servir scrapy
 class SteamSpider(scrapy.Spider):
     name = 'steam'
-    start_urls = ['https://store.steampowered.com/search/?sort_by=_ASC&category1=998&page=1']
+    start_urls = ['https://store.steampowered.com/search/?category1=998&page=1&ndl=1']
     textUtils = TextUtils()
 
 # Es defineix l'user agent per a camuflar que s'està scrapejant
     def __init__(self):
         self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+        self.driver = webdriver.Chrome()
+
 
 # Es comencen a fer les peticions a cadascuna de les pàgines
     def start_requests(self):
@@ -23,14 +30,21 @@ class SteamSpider(scrapy.Spider):
 
 # Es parsegen cadascun dels elements de la pàgina
     def parse(self, response):
+        self.driver.get(response.url)
         for game in response.css('.search_result_row'):
             game_id = game.css('a::attr(data-ds-appid)').get()
             title = game.css('.title::text').get().strip()
             price = game.css('.search_price::text').get().strip()
-            review_data = game.css('.search_review_summary').attrib['data-tooltip-html'].strip()
-            released = game.css('.search_released::text').get().strip()
+            try:
+                review_data = game.css('.search_review_summary').attrib['data-tooltip-html'].strip()
+            except:
+                review_data = None
+            released = game.css('.search_released::text').get()
             discount = game.css('.search_discount span::text').get()
             platforms = game.css('span.platform_img::attr(class)').extract()
+
+            if released is not None:
+                released = released.strip()
 
             if review_data:
                 nums = self.textUtils.get_numbers_from_string(review_data)
@@ -47,34 +61,47 @@ class SteamSpider(scrapy.Spider):
             if platforms:
                 platforms = self.textUtils.remove_img_text(platforms)
 
-            item = {
-                'game_id': game_id,
-                'title': title,
-                'price': price,
-                'discount': discount,
-                'review_score': review_score,
-                'number_reviews': n_reviews,
-                'released': released,
-                'platforms': platforms
-            }
-            yield item
-            self.write_to_csv(item)
+            item = ItemSteam(game_id, title, price, discount, review_score, n_reviews, released, platforms).json()
 
-# S'esperen 5 segons entre peticions de diferents pàgines
-        time.sleep(5) # Wait for 5 seconds between requests
+            '''
+            Crawl inside the game to obtain extra info
+            '''
+            request_single = scrapy.Request('https://store.steampowered.com/app/' + game_id, callback=self.get_single_game,
+                                headers={'User-Agent': self.user_agent},  meta={'item': item})
 
-# Es passa a la següent pagina
-        next_page = response.css('.search_pagination_right a::attr(href)').get()
+            time.sleep(3)
+            yield request_single
+
+        # S'esperen 5 segons entre peticions de diferents pàgines
+        time.sleep(5)
+
+
+        # Es passa a la següent pagina
+        next_page = response.css('.search_pagination_right a:contains(">")::attr(href)').get()
         if next_page is not None:
-            yield response.follow(next_page, self.parse, headers={
-                'User-Agent': self.user_agent
-            })
+            yield scrapy.FormRequest(
+                url=next_page,
+                method='GET',
+                headers={
+                    'User-Agent': self.user_agent
+                },
+                callback=self.parse
+            )
+
+
+    def get_single_game(self, response):
+        page = response.css(".tablet_grid")
+        item = response.meta['item']
+        item['developers'] = page.css('div.dev_row div#developers_list.summary a::text').getall()
+        item['genres'] = page.css('div#genresAndManufacturer.details_block span a::text').getall()
+        self.write_to_csv(item)
 
 # Es defineix la funció per a escriure cada element a un arxiu .csv
     def write_to_csv(self, item):
-        filename = 'steam_games.csv'
+        filename = 'output/steam_games.csv'
         with open(filename, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['game_id', 'title', 'price', 'discount', 'review_score', 'number_reviews', 'released', 'platforms'])
+            writer = csv.DictWriter(f, fieldnames=['game_id', 'title', 'price', 'discount', 'review_score', 'number_reviews', 'released', 'platforms'
+                                                   ,'developers', 'genres'])
             if f.tell() == 0:
                 writer.writeheader()
             writer.writerow(item)
