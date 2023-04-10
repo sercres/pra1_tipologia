@@ -28,7 +28,7 @@ class SteamSpider(scrapy.Spider):
         for url in self.start_urls:
             yield scrapy.Request(url, headers={
                 'User-Agent': self.user_agent,
-            }, cookies={'birthtime': '125103601', 'lastagecheckage':'19-0-1974'})
+            })
 
 # Es parsegen cadascun dels elements de la pàgina
     def parse(self, response):
