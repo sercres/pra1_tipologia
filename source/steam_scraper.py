@@ -5,6 +5,8 @@ import csv
 from model.item import ItemSteam
 from text_utils import TextUtils
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from scrapy.selector import Selector
 
 
 
@@ -17,7 +19,7 @@ class SteamSpider(scrapy.Spider):
 
 # Es defineix l'user agent per a camuflar que s'està scrapejant
     def __init__(self):
-        self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+        self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
         self.driver = webdriver.Chrome()
 
 
@@ -25,8 +27,8 @@ class SteamSpider(scrapy.Spider):
     def start_requests(self):
         for url in self.start_urls:
             yield scrapy.Request(url, headers={
-                'User-Agent': self.user_agent
-            })
+                'User-Agent': self.user_agent,
+            }, cookies={'birthtime': '125103601', 'lastagecheckage':'19-0-1974'})
 
 # Es parsegen cadascun dels elements de la pàgina
     def parse(self, response):
@@ -66,8 +68,11 @@ class SteamSpider(scrapy.Spider):
             '''
             Crawl inside the game to obtain extra info
             '''
-            request_single = scrapy.Request('https://store.steampowered.com/app/' + game_id, callback=self.get_single_game,
-                                headers={'User-Agent': self.user_agent},  meta={'item': item})
+
+            request_single = scrapy.Request('https://store.steampowered.com/app/' + game_id,
+                                            callback=self.get_single_game,
+                                headers={'User-Agent': self.user_agent},
+                                meta={'item': item})
 
             time.sleep(3)
             yield request_single
@@ -87,11 +92,32 @@ class SteamSpider(scrapy.Spider):
                 },
                 callback=self.parse
             )
-
-
     def get_single_game(self, response):
-        page = response.css(".tablet_grid")
+        self.driver.get(response.url)
         item = response.meta['item']
+
+        '''
+        En el cas que se'ns redirigeixi a la pàgina de verificació d'edat, emprarem Selenium per omplir el formulari
+        i fer submit. Un cop s'ha fet aquesta acció, el lloc web ja no la demanarà més. Per això se separen els try-catch
+        '''
+        try:
+            age_year = self.driver.find_element(By.ID, "ageYear")
+            age_year.send_keys("1990")
+        except:
+            pass
+        '''
+        Un cop completat el formulari, cal clicar el botó per enviar la informació i que es mostri la pàgina del joc
+        '''
+        try:
+            self.driver.find_element(By.ID, "view_product_page_btn").click() #Element on es fa click
+            time.sleep(3)
+            response = Selector(text=self.driver.page_source) #obtenim tot el contingut de la pàgina
+        except:
+            pass
+
+        time.sleep(2)
+
+        page = response.css(".tablet_grid")
         item['developers'] = page.css('div.dev_row div#developers_list.summary a::text').getall()
         item['genres'] = page.css('div#genresAndManufacturer.details_block span a::text').getall()
         self.write_to_csv(item)
@@ -108,4 +134,5 @@ class SteamSpider(scrapy.Spider):
 
 # Es defineix una funció per a que el crawler s'aturi i indiqui la raó de l'aturada
     def closed(self, reason):
+        self.driver.quit()
         self.log('Spider closed: ' + reason)
