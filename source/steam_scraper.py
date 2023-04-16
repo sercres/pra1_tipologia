@@ -124,7 +124,7 @@ class SteamSpider(scrapy.Spider):
 
 # Es defineix la funció per a escriure cada element a un arxiu .csv
     def write_to_csv(self, item):
-        filename = 'output/steam_games.csv'
+        filename = 'dataset/steam_games.csv'
         with open(filename, 'a', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=['game_id', 'title', 'price', 'discount', 'review_score', 'number_reviews', 'released', 'platforms'
                                                    ,'developers', 'genres'])
